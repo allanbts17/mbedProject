@@ -1,83 +1,102 @@
 #include "mbed.h"
 #include "motorControl.h"
+#include "slre.h"
+#include "Comm.h"
 
 DigitalOut led1(LED1);
 DigitalOut led2(LED2);
-Serial pc1(p13,p14); //tx y rx -- naranja,rojo
+Serial pc(p13,p14); //tx y rx -- naranja,rojo
+Serial xbee(p9,p10);
 motorControl controller;
-//motorDriver driver(p22,p23,p21);
+Comm comm;
 
 InterruptIn a(p26);
 InterruptIn b(p27);
-	
-int i =0;
-int msg;
 
+const int BUF_LIMIT = 96; //24 * 4
+int bufIndex = 0;
+char *buf = new char[BUF_LIMIT];
+
+int i = 0;
+int msg;
 
 char step[20];
 
 void moveMsg(){
-	//char msg = pc1.getc();
-	//pc1.putc(msg);
-	//pc1.printf("Func.");
-	while(pc1.readable()){
-	//	pc1.printf("readable.");
-		step[i] = pc1.getc();
+	while(pc.readable()){
+		step[i] = pc.getc();
 		i++;
 	}
-//	pc1.printf("%s",step);
 	if(i>1)
-	if(!pc1.readable() and step[i-1] == 'a') {
-		msg = atoi(step);
-		//pc1.printf("Pulsos: %d\n",msg);
-		i=0;
-		controller.pulse_setpoint = msg;
-		controller.last_time = controller.t.read_us();
-		controller.run();
+		if(!pc.readable() and step[i-1] == 'a') {
+			msg = atoi(step);
+			i=0;
+			controller.pulse_setpoint = msg;
+			controller.last_time = controller.t.read_us();
+			controller.setMsg();
+			controller.run();
+		}
+}
+
+void xbeeComm(){
+	while(xbee.readable()){
+		//pc.putc(xbee.getc());
+		
+		if(bufIndex < BUF_LIMIT){
+			buf[bufIndex] = xbee.getc();
+			comm.dataReached(buf);
+			bufIndex++;
+		} else {
+			bufIndex = 0;
+		}
 	}
 }
-
-/*
-void Atrigger(){
-	pc1.printf("A");
-}
-
-void Btrigger(){
-	pc1.printf("B");
-}*/
 
 int main() 
 {
-	pc1.attach(moveMsg);
-	pc1.baud(9600);
-	controller.init();
+	pc.attach(moveMsg);
+	pc.baud(9600);
+	xbee.baud(9600);
 	
-	/*a.rise(Atrigger);
-	a.fall(Atrigger);
-	b.rise(Btrigger);
-	b.fall(Btrigger);
+	xbee.attach(xbeeComm);
+//	char *txt = "2.4560";
+	//float num = atof(txt);
+	//pc.printf("%f", num);
+	/*controller.init();*/
 	
-	a.mode(PullDown);
-	b.mode(PullDown);
+  pc.printf("Empezo la prueba: \n");
+	comm.init();
 	
+	char *leng = new char[5];
+	char dato = '2';
+	//pc.printf("tesst");
+	pc.putc(dato);
+	leng[0] = 'A';
+	leng[1] = 'B';
+	leng[2] = '\0';
 	
-	driver.forward(0.5f);*/
+	pc.putc(leng[0]);
+	pc.putc(leng[1]);
 	
+	pc.printf("\n%d",strlen(buf));
 	
-	
-/*	uint16_t b = 0xD1E4;
-	int g = 65420;
-	char *bytePtr = (char *)&g;
-	pc1.putc(*bytePtr);      // reverse the order of these lines if you have endian issues
-	pc1.putc(*(bytePtr+1));
-	//pc1.puts("\n");
-	pc1.puts("Hola mundo con puts \n");
-	pc1.printf("hola con printf");       */
-  //pc1.printf("Empezo la prueba: \n");
 	//pulseTest();
-	while(1){
-
-	
-	}
-
+	//Quitar?
+	/*while(1){
+	}*/
+	/*
+	char *buf = "GET /foo.bar?query=moo HTTP/1.5\r\n";
+	struct slre	slre;
+	struct cap	captures[4 + 1];
+	char *pattern = "^(GET|POST) (\\S+) HTTP/(\\S+?)\r\n";
+	if (!slre_compile(&slre, pattern)) {
+		pc.printf("Error compiling RE: %s\n", slre.err_str);
+	} else if (!slre_match(&slre, buf, strlen(buf), captures)) {
+		printf("Not a valid HTTP request\n" );
+	} else {
+		pc.printf("Request line length: %d\n", captures[0].len);
+		pc.printf("Method: %.*s\n", captures[1].len, captures[1].ptr);
+		pc.printf("URI: %.*s\n", captures[2].len, captures[2].ptr);
+	}*/
 }
+
