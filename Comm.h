@@ -3,7 +3,7 @@
 
 class Comm{
 	private:
-		
+		bool receiveData;
 		const int groupLimit;
 		int groupIndex;
 		bool once;
@@ -21,6 +21,7 @@ class Comm{
 		Comm();
 		
 		void init(){
+			receiveData = true;
 			groupIndex = 0;
 			once = true;
 			pc->baud(9600);
@@ -45,6 +46,7 @@ class Comm{
 			char aactual[1];
 			
 			int size = limit;//strlen(buff);
+			if(receiveData)
 			for(int idx=0;idx<size;idx++){
 				if(buff[idx]=='&' && idx+21 <= limit){
 					if(buff[idx+21]=='@'){
@@ -85,6 +87,7 @@ class Comm{
 						if(groupIndex >= groupLimit){
 							if(once){
 								once = false;
+								receiveData = false;
 								for(int idz=0;idz<groupLimit;idz++){
 									//pc->printf("%d,%d,%5.3f,%5.3f\n",totalPoint[idz],pointNum[idz],x[idz],y[idz]);
 									pc->printf("Grupo %d, Objects number: %d\n",idz,group[idz].getObjectCount()+1);
@@ -93,6 +96,9 @@ class Comm{
 									}
 									pc->printf("\n");
 								}
+								receiveData = true;
+								once = true;
+								groupIndex = 0;
 							}
 						}
 						
@@ -113,12 +119,12 @@ class Comm{
 };
 
 Comm::Comm():
-groupLimit(10),totalPoint(),
+groupLimit(20),totalPoint(),
 pointNum(),x(),y(),
 pc(new Serial(p13,p14)),
 packageSend(false),
 startStore(false),
-group(new ObjectGroup[10])
+group(new ObjectGroup[20])
 //groupList(new ObjectGroup[10])
 {}
 //objectLimit = 120 and 110
